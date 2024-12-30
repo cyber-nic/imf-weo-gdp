@@ -64,6 +64,10 @@
 	});
 </script>
 
+<div id="title-container">
+	<p>Gross domestic product (GDP), Current prices, US Dollar</p>
+</div>
+
 <svg viewBox={`0 0 ${width} ${height}`} style="max-width: 100%; height: auto;">
 	{#if visualizationType === 'treemap'}
 		{#each treemapRoot.leaves() as leaf}
@@ -72,7 +76,9 @@
 					width={leaf.x1 - leaf.x0}
 					height={leaf.y1 - leaf.y0}
 					fill={colorScale(leaf.data.name)}
-				/>
+				>
+					<title>{`$${d3.format(',.2f')(leaf.value)}B`}</title>
+				</rect>
 				<text
 					x={(leaf.x1 - leaf.x0) / 2}
 					y={(leaf.y1 - leaf.y0) / 2}
@@ -91,7 +97,9 @@
 			{#if node.depth > 0}
 				<!-- Skip the root circle -->
 				<g transform={`translate(${node.x},${node.y})`}>
-					<circle r={node.r} fill={colorScale(node.data.name)} />
+					<circle r={node.r} fill={colorScale(node.data.name)}>
+						<title>{`$${d3.format(',.2f')(node.value)}B`}</title>
+					</circle>
 					<text
 						dy="0.35em"
 						text-anchor="middle"
@@ -123,6 +131,9 @@
 			on:input={(e) => (selectedYear = +e.target.value)}
 		/>
 	</div>
+	<div id="toggle-container">
+		<a href="https://www.github.com/cyber-nic/imf-weo-gdp" target="_blank">cyber-nic/imf-weo-gdp</a>
+	</div>
 </div>
 
 <style>
@@ -136,6 +147,16 @@
 		pointer-events: none;
 	}
 
+	#title-container {
+		position: fixed;
+		top: 20px;
+		left: 20px;
+		background: rgba(255, 255, 255, 0.8);
+		padding: 10px;
+		border-radius: 8px;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+	}
+
 	#controls-container {
 		display: flex;
 		justify-content: center;
@@ -147,7 +168,8 @@
 	}
 
 	#slider-container,
-	#toggle-container {
+	#toggle-container,
+	#button-container {
 		background: rgba(255, 255, 255, 0.8);
 		padding: 10px;
 		border-radius: 8px;

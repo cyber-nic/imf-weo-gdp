@@ -36,6 +36,9 @@ export function parseDataToTree(data: DataRow[], year: string): D3Node {
 			const countryName = row['COUNTRY.Name'].split(',')[0]; // Extract country name from full name
 			const gdpValue = parseFloat(row[year]) || 0; // Default to 0 if GDP is missing
 
+			// remove decicmals
+			const gdpValueNoDecimals = gdpValue.toFixed(0);
+
 			return {
 				name: countryName,
 				value: gdpValue
