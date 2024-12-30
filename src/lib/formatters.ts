@@ -1,5 +1,18 @@
 import type { D3Node, DataRow } from './types';
 
+export function getMinMaxYears(data: DataRow): { minYear: number; maxYear: number } {
+	// Extract keys that are valid years and have a value > 0
+	const years = Object.entries(data)
+		.filter(([key, value]) => /^\d{4}$/.test(key) && parseFloat(value) > 0) // Filter valid years and positive values
+		.map(([key]) => Number(key)); // Convert year keys to numbers
+
+	// Find the minimum and maximum years
+	const minYear = Math.min(...years);
+	const maxYear = Math.max(...years);
+
+	return { minYear, maxYear };
+}
+
 /**
  * Converts flat data into a D3-compatible tree structure.
  * @param data - The flat data array from the CSV.

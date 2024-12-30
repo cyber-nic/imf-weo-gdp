@@ -1,12 +1,15 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import * as d3 from 'd3';
 	import { data } from '../lib/data';
-	import { parseDataToTree } from '../lib/formatters';
+	import { parseDataToTree, getMinMaxYears } from '../lib/formatters';
 	import type { D3Node } from '../lib/types';
 
 	// Dimensions for the visualization
 	let width = window.innerWidth;
 	let height = window.innerHeight;
+
+	const { minYear, maxYear } = getMinMaxYears(data[0]);
 
 	// Define a color scale for diverse colors
 	const colorScale = d3.scaleOrdinal(d3.schemeSet3);
@@ -32,9 +35,20 @@
 			.treemap<D3Node>()
 			.tile(d3.treemapBinary)
 			.size([width, height])
-			.padding(1)
+			.padding(2)
 			.round(true)(root); // Apply the layout to the root
 	}
+
+	// Handle window resize
+	function updateDimensions() {
+		width = window.innerWidth;
+		height = window.innerHeight;
+	}
+
+	onMount(() => {
+		window.addEventListener('resize', updateDimensions);
+		return () => window.removeEventListener('resize', updateDimensions);
+	});
 </script>
 
 <svg viewBox={`0 0 ${width} ${height}`} style="max-width: 100%; height: auto;">
@@ -60,6 +74,18 @@
 	{/each}
 </svg>
 
+<div id="slider-container">
+	<label for="year-slider">Year: {selectedYear}</label>
+	<input
+		id="year-slider"
+		type="range"
+		min={minYear}
+		max={maxYear}
+		value={selectedYear}
+		on:input={(e) => (selectedYear = +e.target.value)}
+	/>
+</div>
+
 <style>
 	/* Ensure the treemap is responsive */
 	svg {
@@ -69,5 +95,22 @@
 
 	text {
 		pointer-events: none;
+	}
+
+	#slider-container {
+		position: fixed;
+		bottom: 20px;
+		left: 50%;
+		transform: translateX(-50%);
+		text-align: center;
+		background: rgba(255, 255, 255, 0.8);
+		padding: 10px;
+		border-radius: 8px;
+		box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+	}
+
+	#year-slider {
+		width: 300px;
+		margin-top: 5px;
 	}
 </style>
