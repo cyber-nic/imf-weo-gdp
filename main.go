@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -20,7 +22,7 @@ func makeIMFUrl(path string) string {
 
 func main() {
 	// Step 1: Submit the POST request and get the UUID
-	uuid, err := submitQuery()
+	uuid, err := requestData()
 	if err != nil {
 		log.Fatalf("Error fetching UUID: %v", err)
 	}
@@ -32,16 +34,16 @@ func main() {
 	}
 	defer body.Close()
 
-	filename := "data.csv"
-	if err := saveToFile(body, filename); err != nil {
-		log.Fatalf("Error saving data to file: %v", err)
+	filename := "src/lib/data.ts"
+	if err := saveFormattedData(body, filename); err != nil {
+		log.Fatalf("Error formatting data: %v", err)
 	}
 
 	fmt.Printf("Data saved to %s\n", filename)
 }
 
-// submitQuery requests the World Economic Outlook (WEO) data from the IMF API and returns the UUID for the async request.
-func submitQuery() (string, error) {
+// requestData requests the World Economic Outlook (WEO) data from the IMF API and returns the UUID for the async request.
+func requestData() (string, error) {
 	// Define the URL for the POST request
 	url := makeIMFUrl("platform/rest/v2/engine/data/sync/submit")
 
@@ -57,7 +59,7 @@ func submitQuery() (string, error) {
 		"filters": [
 			{"componentCode": "TIME_PERIOD", "operator": "ge", "value": "%d"},
 			{"componentCode": "TIME_PERIOD", "operator": "lt", "value": "%d"},
-			{"componentCode": "INDICATOR", "operator": "eq", "value": "NGDP_D"}
+			{"componentCode": "INDICATOR", "operator": "eq", "value": "NGDPD"}
 		],
 		"headerConfig": {"languages": ["en"]},
 		"includeHistory": "false",
@@ -138,20 +140,51 @@ func fetchData(uuid string) (io.ReadCloser, error) {
 
 	return resp.Body, nil
 }
+func saveFormattedData(reader io.Reader, filename string) error {
+	// Configure the CSV reader
+	csvReader := csv.NewReader(reader)
+	csvReader.LazyQuotes = true // Allows lazy parsing of quotes in fields
+	csvReader.TrimLeadingSpace = true
 
-// saveToFile writes data from an io.Reader to a specified file.
-func saveToFile(reader io.Reader, filename string) error {
-	// Open the output file
-	file, err := os.Create(filename)
+	// Parse the CSV file
+	records, err := csvReader.ReadAll()
 	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
+		return fmt.Errorf("error reading CSV file: %w", err)
 	}
-	defer file.Close()
 
-	// Write the data to the file
-	_, err = io.Copy(file, reader)
-	if err != nil {
-		return fmt.Errorf("error writing to file: %w", err)
+	// Check if the file has headers
+	if len(records) == 0 {
+		return fmt.Errorf("error reading CSV file: no data found")
 	}
+
+	// Convert CSV data to a JSON object
+	var data []map[string]string
+	headers := records[0]
+	for _, row := range records[1:] {
+		if len(row) != len(headers) {
+			return fmt.Errorf("error reading CSV file: row length mismatch")
+		}
+		rowMap := make(map[string]string)
+		for i, value := range row {
+			rowMap[headers[i]] = value
+		}
+		data = append(data, rowMap)
+	}
+
+	// Convert JSON object to a string
+	dataJSON, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error converting to JSON: %w", err)
+	}
+
+	// Write file
+	output := fmt.Sprintf(`export const data = %s;`, string(dataJSON))
+
+	err = os.WriteFile(filename, []byte(output), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing Svelte file: %w", err)
+	}
+
+	fmt.Printf("Svelte file written successfully: %s\n", filename)
 	return nil
 }
